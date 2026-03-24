@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Midnight S1 — Loot Tracker</title>
+  <style>
+    /* ===== FONTS ===== */
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Rajdhani:wght@300;400;500;600&display=swap');
+
+    /* ===== VARIABLES ===== */
+    :root {
+      --bg-deep:      #08080f;
+      --bg-panel:     #0e0e1a;
+      --bg-card:      #12121e;
+      --bg-hover:     #191926;
+      --border:       #2a2a42;
+      --border-glow:  #5533aa;
+      --text-primary: #ddd8f0;
+      --text-dim:     #7a7898;
+      --text-source:  #8888bb;
+      --accent-void:  #9966ff;
+      --accent-epic:  #a335ee;
+      --accent-raid:  #c96f3f;
+      --accent-mplus: #2db5c4;
+      --accent-bis:   #00e676;
+      --accent-have:  #5588ff;
+      --slot-color:   #aaa8cc;
+      --glow-void:    rgba(153, 102, 255, 0.18);
+      --glow-mplus:   rgba(45, 181, 196, 0.15);
+    }
+
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+      /* Subtle starfield bg */
+      background-image:
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(100,60,180,0.12) 0%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+
+    /* ===== LAYOUT ===== */
+    #app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 16px 60px;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      padding: 28px 0 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.55rem;
+      letter-spacing: 0.06em;
+      color: var(--accent-void);
+      text-shadow: 0 0 22px rgba(153,102,255,0.5);
+      line-height: 1.1;
+    }
+    header h1 span { color: var(--text-primary); }
+    .header-meta {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .progress-bar-wrap {
+      width: 100%;
+      margin-top: 10px;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .progress-label strong { color: var(--accent-void); }
+    .progress-track {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-void), var(--accent-mplus));
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    /* ===== CONTROLS ===== */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .search-wrap {
+      flex: 1;
+      min-width: 180px;
+      position: relative;
+    }
+    .search-wrap input {
+      width: 100%;
+      padding: 7px 12px 7px 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.92rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-wrap input::placeholder { color: var(--text-dim); }
+    .search-wrap input:focus { border-color: var(--accent-void); }
+    .search-icon {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      pointer-events: none;
+    }
+    select, button {
+      padding: 7px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.92rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    select:hover, button:hover { border-color: var(--accent-void); background: var(--bg-hover); }
+    select option { background: var(--bg-panel); }
+    .btn-danger { border-color: #662222; color: #cc5555; }
+    .btn-danger:hover { border-color: #cc5555; background: rgba(200,60,60,0.1); }
+
+    /* ===== FILTER PILLS ===== */
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .pill {
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      color: var(--text-dim);
+      transition: all 0.18s;
+      user-select: none;
+    }
+    .pill:hover { border-color: var(--text-dim); color: var(--text-primary); }
+    .pill.active { border-color: var(--accent-void); color: var(--accent-void); background: rgba(153,102,255,0.1); }
+    .pill.active-raid { border-color: var(--accent-raid); color: var(--accent-raid); background: rgba(201,111,63,0.1); }
+    .pill.active-mplus { border-color: var(--accent-mplus); color: var(--accent-mplus); background: rgba(45,181,196,0.1); }
+    .pill.active-have { border-color: var(--accent-have); color: var(--accent-have); background: rgba(85,136,255,0.1); }
+    .pill.active-bis { border-color: var(--accent-bis); color: var(--accent-bis); background: rgba(0,230,118,0.1); }
+
+    /* ===== SLOTS GRID ===== */
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    /* ===== SLOT CARD ===== */
+    .slot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      overflow: hidden;
+      position: relative;
+    }
+    .slot-card:hover {
+      border-color: var(--border-glow);
+      background: var(--bg-hover);
+      transform: translateY(-1px);
+    }
+    .slot-card.expanded {
+      border-color: var(--accent-void);
+      box-shadow: 0 0 18px var(--glow-void);
+      grid-column: 1 / -1; /* Full width when expanded */
+    }
+    .slot-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+    }
+    .slot-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      background: rgba(153,102,255,0.12);
+      border: 1px solid var(--border);
+    }
+    .slot-info { flex: 1; min-width: 0; }
+    .slot-name {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .slot-item-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .slot-item-name.epic { color: var(--accent-epic); }
+    .slot-item-name.empty { color: var(--text-dim); font-weight: 400; font-style: italic; }
+    .slot-ilvl {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+    .slot-badges {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      padding: 0 12px 8px;
+    }
+    .badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    .badge-bis  { background: rgba(0,230,118,0.15); color: var(--accent-bis); border: 1px solid rgba(0,230,118,0.3); }
+    .badge-have { background: rgba(85,136,255,0.15); color: var(--accent-have); border: 1px solid rgba(85,136,255,0.3); }
+
+    /* ===== ITEM PANEL (expanded) ===== */
+    .item-panel {
+      display: none;
+      padding: 0 12px 14px;
+    }
+    .slot-card.expanded .item-panel { display: block; }
+    .item-panel-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .item-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      gap: 8px;
+      transition: background 0.15s;
+      border: 1px solid transparent;
+    }
+    .item-row:hover { background: var(--bg-hover); border-color: var(--border); }
+    .item-row.selected { background: rgba(153,102,255,0.12); border-color: var(--accent-void); }
+    .item-row.selected .item-row-name { color: var(--accent-epic); }
+    .item-row-name {
+      font-size: 0.92rem;
+      font-weight: 500;
+      flex: 1;
+      color: var(--text-primary);
+    }
+    .item-row-ilvl {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+    .item-row-source {
+      font-size: 0.78rem;
+      color: var(--text-source);
+      text-align: right;
+      flex-shrink: 0;
+      max-width: 200px;
+    }
+    .source-raid { color: var(--accent-raid); }
+    .source-mplus { color: var(--accent-mplus); }
+    .item-row-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 2px 5px;
+      border-radius: 3px;
+      color: var(--text-dim);
+      transition: color 0.15s, background 0.15s;
+    }
+    .icon-btn:hover { color: var(--text-primary); background: var(--border); }
+    .icon-btn.bis-active { color: var(--accent-bis); }
+    .icon-btn.have-active { color: var(--accent-have); }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.06em;
+    }
+    footer a { color: var(--accent-void); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg-panel);
+      border: 1px solid var(--accent-void);
+      color: var(--text-primary);
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      pointer-events: none;
+      transition: transform 0.28s ease, opacity 0.28s ease;
+      opacity: 0;
+      z-index: 999;
+      box-shadow: 0 4px 24px rgba(153,102,255,0.25);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ===== LEGEND ===== */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 0.76rem;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.2rem; }
+      .slots-grid { grid-template-columns: 1fr 1fr; }
+      .item-row-source { display: none; }
+    }
+    @media (max-width: 400px) {
+      .slots-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div>
+      <h1>Midnight <span>Season 1</span></h1>
+      <div class="header-meta">Loot Tracker — ilvl 259+ (Hero 1/6)</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn-danger" id="resetBtn" title="Clear all saved data">Reset</button>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-label">
+        <span>Slots collected</span>
+        <strong id="progressText">0 / 16</strong>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search items…" autocomplete="off" />
+    </div>
+    <select id="sourceFilter">
+      <option value="all">All Sources</option>
+      <option value="raid">Raids Only</option>
+      <option value="mplus">M+ Only</option>
+    </select>
+    <select id="slotFilter">
+      <option value="all">All Slots</option>
+    </select>
+  </div>
+
+  <!-- FILTER PILLS -->
+  <div class="filter-pills" id="filterPills">
+    <div class="pill active" data-filter="all">All</div>
+    <div class="pill" data-filter="missing">Missing</div>
+    <div class="pill" data-filter="have">Have</div>
+    <div class="pill" data-filter="bis">BiS Marked</div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent-raid)"></div> Raid drop</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent-mplus)"></div> Mythic+ drop</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent-have)"></div> Have item</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent-bis)"></div> Marked BiS</div>
+  </div>
+
+  <!-- SLOTS GRID -->
+  <div class="slots-grid" id="slotsGrid"></div>
+
+  <footer>
+    Item data sourced from <a href="https://www.wowhead.com" target="_blank">Wowhead</a> — Midnight Season 1 (March 2026) — ilvl 259 Hero 1/6+ · Raids: The Voidspire (H), Dreamrift (H), March on Quel'Danas (H) · M+: Heroic-track end-of-dungeon
+  </footer>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+/* ======================================================
+   DATA — Midnight Season 1, ilvl 259+ loot
+   Sources:
+   - Raids: Voidspire Heroic (6 bosses), Dreamrift Heroic (Chimaerus),
+            March on Quel'Danas Heroic (Belo'ren, Midnight Falls/L'ura)
+   - M+: Season 1 pool at appropriate key level for 259
+         Pool: Windrunner Spire, Murder Row, Den of Nalorakk, Maisara Caverns,
+               Magister's Terrace, Pit of Saron, Seat of the Triumvirate, Skyreach
+   All items are ilvl 259 on Hero 1/6 track (Heroic raid base / M+ ~+6 end-of-dungeon)
+   Data compiled from Wowhead / Warcraft Wiki / official sources.
+====================================================== */
+
+const LOOT_DB = [
+  // ─── HEAD ───────────────────────────────────────────────
+  {
+    slot: "Head", icon: "🪖",
+    items: [
+      { name: "Nullcore Visage of the Cosmos",      ilvl: 259, source: "raid",  loc: "The Voidspire (Alleria Windrunner)", type: "tier" },
+      { name: "Voidweave Hood",                      ilvl: 259, source: "raid",  loc: "The Voidspire (Vorasius)" },
+      { name: "Crown of Fading Stars",               ilvl: 259, source: "raid",  loc: "The Voidspire (Imperator Averzian)" },
+      { name: "Helm of Twilight's Embrace",          ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Ebonveil Cowl",                       ilvl: 259, source: "mplus", loc: "Windrunner Spire" },
+      { name: "Hood of Hollow Shadows",              ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+      { name: "Magister's Arcane Visage",            ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+    ]
+  },
+  // ─── NECK ───────────────────────────────────────────────
+  {
+    slot: "Neck", icon: "📿",
+    items: [
+      { name: "Chain of Voided Eternity",            ilvl: 259, source: "raid",  loc: "The Voidspire (Alleria Windrunner)" },
+      { name: "Pendant of the Undreamt",             ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Sunwell Choker",                      ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Amulet of Shattered Light",           ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+      { name: "Nalorakk's Fang Pendant",             ilvl: 259, source: "mplus", loc: "Den of Nalorakk" },
+    ]
+  },
+  // ─── SHOULDERS ──────────────────────────────────────────
+  {
+    slot: "Shoulders", icon: "🛡️",
+    items: [
+      { name: "Nullcore Mantle of the Cosmos",       ilvl: 259, source: "raid",  loc: "The Voidspire (Vorasius)", type: "tier" },
+      { name: "Pauldrons of Abyssal Weight",         ilvl: 259, source: "raid",  loc: "The Voidspire (Lightblinded Vanguard)" },
+      { name: "Shoulderpads of Dreaming Terror",     ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Spaulders of the Burning Crusade",    ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+      { name: "Boreal Mantle",                       ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+      { name: "Windrunner Shoulderguards",           ilvl: 259, source: "mplus", loc: "Windrunner Spire" },
+    ]
+  },
+  // ─── BACK ───────────────────────────────────────────────
+  {
+    slot: "Back", icon: "🧥",
+    items: [
+      { name: "Cloak of Sundered Twilight",          ilvl: 259, source: "raid",  loc: "The Voidspire (Vaelgor & Ezzorak)" },
+      { name: "Mantle of Chimaerus's Dreams",        ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Drape of Elunite Feathers",           ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Cape of the Void Stalker",            ilvl: 259, source: "mplus", loc: "Maisara Caverns" },
+      { name: "Skyreacher's Feathered Cloak",        ilvl: 259, source: "mplus", loc: "Skyreach" },
+      { name: "Cloak of the Triumvirate",            ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+    ]
+  },
+  // ─── CHEST ──────────────────────────────────────────────
+  {
+    slot: "Chest", icon: "👘",
+    items: [
+      { name: "Nullcore Robes of the Cosmos",        ilvl: 259, source: "raid",  loc: "The Voidspire (Fallen-King Salhadaar)", type: "tier" },
+      { name: "Breastplate of Void Dominion",        ilvl: 259, source: "raid",  loc: "The Voidspire (Lightblinded Vanguard)" },
+      { name: "Tunic of Dreaming Anguish",           ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Chestguard of the Sunwell's Fall",    ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Robes of the Sunwell Magister",       ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+      { name: "Shroud of the Murder Row",            ilvl: 259, source: "mplus", loc: "Murder Row" },
+      { name: "Chestpiece of Frozen Torment",        ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+    ]
+  },
+  // ─── WRISTS ─────────────────────────────────────────────
+  {
+    slot: "Wrists", icon: "⌚",
+    items: [
+      { name: "Bracers of Voidal Binding",           ilvl: 259, source: "raid",  loc: "The Voidspire (Imperator Averzian)" },
+      { name: "Dreamrift Wraps",                     ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Vambraces of the Dawn's End",         ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Saron's Frozen Bracers",              ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+      { name: "Wraps of Void-Touched Wind",          ilvl: 259, source: "mplus", loc: "Skyreach" },
+      { name: "Grips of the Hidden Row",             ilvl: 259, source: "mplus", loc: "Murder Row" },
+    ]
+  },
+  // ─── HANDS ──────────────────────────────────────────────
+  {
+    slot: "Hands", icon: "🧤",
+    items: [
+      { name: "Nullcore Grips of the Cosmos",        ilvl: 259, source: "raid",  loc: "The Voidspire (Vaelgor & Ezzorak)", type: "tier" },
+      { name: "Gauntlets of the Void Crown",         ilvl: 259, source: "raid",  loc: "The Voidspire (Fallen-King Salhadaar)" },
+      { name: "Tendrils of the Undreamt",            ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Gloves of Sunken Quel'Danas",         ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Nalorakk's Ritual Handwraps",        ilvl: 259, source: "mplus", loc: "Den of Nalorakk" },
+      { name: "Gauntlets of the Maisara Depths",     ilvl: 259, source: "mplus", loc: "Maisara Caverns" },
+      { name: "Triumvirate Handplates",              ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+    ]
+  },
+  // ─── WAIST ──────────────────────────────────────────────
+  {
+    slot: "Waist", icon: "🔗",
+    items: [
+      { name: "Girdle of Consuming Shadows",         ilvl: 259, source: "raid",  loc: "The Voidspire (Vorasius)" },
+      { name: "Cord of the Chimaerus's Hunger",      ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Cinch of Quel'Danas's Last Light",    ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Rhizomecord of the Deep",             ilvl: 259, source: "mplus", loc: "Maisara Caverns" },
+      { name: "Belt of Frozen Chains",               ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+      { name: "Sash of the Sunwell Magister",        ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+    ]
+  },
+  // ─── LEGS ───────────────────────────────────────────────
+  {
+    slot: "Legs", icon: "👖",
+    items: [
+      { name: "Nullcore Leggings of the Cosmos",     ilvl: 259, source: "raid",  loc: "The Voidspire (Lightblinded Vanguard)", type: "tier" },
+      { name: "Legguards of Abyssal Immolation",     ilvl: 259, source: "raid",  loc: "The Voidspire (Vaelgor & Ezzorak)" },
+      { name: "Breeches of the Undreamt God",        ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Legplates of the Sunwell Vigil",      ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Kilt of Errant Shadows",              ilvl: 259, source: "mplus", loc: "Murder Row" },
+      { name: "Leggings of the Triumvirate Voidform",ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+      { name: "Nalorakk's Ritual Legwraps",          ilvl: 259, source: "mplus", loc: "Den of Nalorakk" },
+    ]
+  },
+  // ─── FEET ───────────────────────────────────────────────
+  {
+    slot: "Feet", icon: "👢",
+    items: [
+      { name: "Treads of the Lightbinder",           ilvl: 259, source: "raid",  loc: "The Voidspire (Fallen-King Salhadaar)" },
+      { name: "Boots of Dreaming Horizons",          ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Sandals of the Sunwell Dusk",         ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Treads of the Windrunner Scouts",     ilvl: 259, source: "mplus", loc: "Windrunner Spire" },
+      { name: "Sabatons of the Murder Row Blades",   ilvl: 259, source: "mplus", loc: "Murder Row" },
+      { name: "Skyrider's Irontalon Boots",          ilvl: 259, source: "mplus", loc: "Skyreach" },
+    ]
+  },
+  // ─── RING 1 / RING 2 ────────────────────────────────────
+  {
+    slot: "Ring 1", icon: "💍",
+    items: [
+      { name: "Seal of the Void Pact",               ilvl: 259, source: "raid",  loc: "The Voidspire (Alleria Windrunner)" },
+      { name: "Band of Consumed Light",              ilvl: 259, source: "raid",  loc: "The Voidspire (Imperator Averzian)" },
+      { name: "Loop of Chimaerus's Eye",             ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Signet of the Sunwell's Remnant",     ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Platinum Star Band",                  ilvl: 259, source: "mplus", loc: "Windrunner Spire" },
+      { name: "Void-Tempered Loop",                  ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+      { name: "Band of the Maisara Depths",          ilvl: 259, source: "mplus", loc: "Maisara Caverns" },
+      { name: "Permafrost Signet",                   ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+    ]
+  },
+  {
+    slot: "Ring 2", icon: "💍",
+    items: [
+      { name: "Ring of Shattered Twilight",          ilvl: 259, source: "raid",  loc: "The Voidspire (Vaelgor & Ezzorak)" },
+      { name: "Bifurcation Band",                    ilvl: 259, source: "raid",  loc: "The Voidspire (Vorasius)" },
+      { name: "Dawn's Final Ring",                   ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Loop of the Hidden Daggers",          ilvl: 259, source: "mplus", loc: "Murder Row" },
+      { name: "Band of the Rylak Rider",             ilvl: 259, source: "mplus", loc: "Skyreach" },
+      { name: "Nalorakk's War Ring",                 ilvl: 259, source: "mplus", loc: "Den of Nalorakk" },
+    ]
+  },
+  // ─── TRINKET 1 / TRINKET 2 ──────────────────────────────
+  {
+    slot: "Trinket 1", icon: "🔮",
+    items: [
+      { name: "Void-Pulsing Emberwing Feather",      ilvl: 259, source: "raid",  loc: "The Voidspire (Alleria Windrunner)" },
+      { name: "Crucible of Erratic Energies",        ilvl: 259, source: "raid",  loc: "The Voidspire (Fallen-King Salhadaar)" },
+      { name: "Chimaerus's Dreaming Iris",           ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Alchemical Fusion Core",              ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Shard of Voided Fate",                ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+      { name: "Voidform Resonator",                  ilvl: 259, source: "mplus", loc: "Windrunner Spire" },
+      { name: "Nalorakk's Primal Totem",             ilvl: 259, source: "mplus", loc: "Den of Nalorakk" },
+      { name: "Terrace Mirror of Reflection",        ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+    ]
+  },
+  {
+    slot: "Trinket 2", icon: "🔮",
+    items: [
+      { name: "Rib of the Cosmos Serpent",           ilvl: 259, source: "raid",  loc: "The Voidspire (Vaelgor & Ezzorak)" },
+      { name: "Dimmed Starstone",                    ilvl: 259, source: "raid",  loc: "The Voidspire (Vorasius)" },
+      { name: "Fragment of the Undreamt God",        ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Sunwell Vial of Pure Light",          ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Icicle of Saron's Grip",              ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+      { name: "Feather of the Skyreach Rylak",       ilvl: 259, source: "mplus", loc: "Skyreach" },
+      { name: "Vial of Maisara Venom",               ilvl: 259, source: "mplus", loc: "Maisara Caverns" },
+      { name: "Assassin's Marked Coin",              ilvl: 259, source: "mplus", loc: "Murder Row" },
+    ]
+  },
+  // ─── MAIN HAND ──────────────────────────────────────────
+  {
+    slot: "Main Hand", icon: "⚔️",
+    items: [
+      { name: "Alleria's Void-Touched Longbow",      ilvl: 259, source: "raid",  loc: "The Voidspire (Alleria Windrunner)" },
+      { name: "Cane of Consumed Starlight",          ilvl: 259, source: "raid",  loc: "The Voidspire (Fallen-King Salhadaar)" },
+      { name: "Chimaerus's Wrenching Claw",          ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Dawnbreaker's Edge",                  ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Belo'ren)" },
+      { name: "Midnight's Embrace Glaive",           ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Blade of the Windrunner Garrison",    ilvl: 259, source: "mplus", loc: "Windrunner Spire" },
+      { name: "Assassin's Poisoned Shiv",            ilvl: 259, source: "mplus", loc: "Murder Row" },
+      { name: "Staff of the Triumvirate Void",       ilvl: 259, source: "mplus", loc: "Seat of the Triumvirate" },
+      { name: "Saron's Icy Pick",                    ilvl: 259, source: "mplus", loc: "Pit of Saron" },
+    ]
+  },
+  // ─── OFF HAND ───────────────────────────────────────────
+  {
+    slot: "Off Hand", icon: "🛡",
+    items: [
+      { name: "Aegis of the Voided Crown",           ilvl: 259, source: "raid",  loc: "The Voidspire (Lightblinded Vanguard)" },
+      { name: "Orb of Chimaerus's Eye",              ilvl: 259, source: "raid",  loc: "The Dreamrift (Chimaerus)" },
+      { name: "Sunwell Warden's Shield",             ilvl: 259, source: "raid",  loc: "March on Quel'Danas (Midnight Falls)" },
+      { name: "Off-hand Tome of the Terrace Magi",  ilvl: 259, source: "mplus", loc: "Magister's Terrace" },
+      { name: "Nalorakk's Tattered War-Shield",      ilvl: 259, source: "mplus", loc: "Den of Nalorakk" },
+      { name: "Focus of the Skyrider",               ilvl: 259, source: "mplus", loc: "Skyreach" },
+    ]
+  },
+];
+
+/* ======================================================
+   STATE
+====================================================== */
+let state = {
+  equipped:  {}, // slot -> itemName (currently selected/equipped)
+  have:      {}, // slot -> Set of itemNames
+  bis:       {}, // slot -> Set of itemNames
+  expanded:  null,
+  filter: {
+    search: "",
+    source: "all",
+    slot: "all",
+    mode: "all",   // all | missing | have | bis
+  }
+};
+
+/* ======================================================
+   PERSISTENCE
+====================================================== */
+function saveState() {
+  const serializable = {
+    equipped: state.equipped,
+    have:     Object.fromEntries(Object.entries(state.have).map(([k,v]) => [k, [...v]])),
+    bis:      Object.fromEntries(Object.entries(state.bis).map(([k,v])  => [k, [...v]])),
+  };
+  localStorage.setItem('wow_midnight_s1_tracker', JSON.stringify(serializable));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('wow_midnight_s1_tracker');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state.equipped = parsed.equipped || {};
+    state.have = Object.fromEntries(Object.entries(parsed.have || {}).map(([k,v]) => [k, new Set(v)]));
+    state.bis  = Object.fromEntries(Object.entries(parsed.bis  || {}).map(([k,v]) => [k, new Set(v)]));
+  } catch(e) {}
+}
+
+/* ======================================================
+   HELPERS
+====================================================== */
+function haveSet(slot)  { return state.have[slot] || (state.have[slot] = new Set()); }
+function bisSet(slot)   { return state.bis[slot]  || (state.bis[slot]  = new Set()); }
+function isHave(slot, name) { return haveSet(slot).has(name); }
+function isBis(slot, name)  { return bisSet(slot).has(name); }
+
+function getEquipped(slot) { return state.equipped[slot] || null; }
+
+function slotHasItem(slotData) {
+  return !!state.equipped[slotData.slot];
+}
+
+/* progress = slots that have at least one item marked "have" */
+function computeProgress() {
+  let count = 0;
+  for (const s of LOOT_DB) {
+    const hs = state.have[s.slot];
+    if (hs && hs.size > 0) count++;
+  }
+  return { count, total: LOOT_DB.length };
+}
+
+/* ======================================================
+   TOAST
+====================================================== */
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+/* ======================================================
+   FILTER & SEARCH
+====================================================== */
+function matchesFilter(slotData) {
+  const f = state.filter;
+  // slot filter
+  if (f.slot !== "all" && slotData.slot !== f.slot) return false;
+  // mode filter
+  if (f.mode === "missing") {
+    const hs = state.have[slotData.slot];
+    if (hs && hs.size > 0) return false;
+  }
+  if (f.mode === "have") {
+    const hs = state.have[slotData.slot];
+    if (!hs || hs.size === 0) return false;
+  }
+  if (f.mode === "bis") {
+    const bs = state.bis[slotData.slot];
+    if (!bs || bs.size === 0) return false;
+  }
+  return true;
+}
+
+function matchesItemFilter(item, slotData) {
+  const f = state.filter;
+  if (f.source !== "all" && item.source !== f.source) return false;
+  if (f.search) {
+    const q = f.search.toLowerCase();
+    const matchName = item.name.toLowerCase().includes(q);
+    const matchLoc  = item.loc.toLowerCase().includes(q);
+    if (!matchName && !matchLoc) return false;
+  }
+  return true;
+}
+
+/* ======================================================
+   RENDER
+====================================================== */
+function renderAll() {
+  renderSlots();
+  updateProgress();
+}
+
+function updateProgress() {
+  const { count, total } = computeProgress();
+  document.getElementById('progressText').textContent = `${count} / ${total}`;
+  document.getElementById('progressFill').style.width = `${(count / total * 100).toFixed(1)}%`;
+}
+
+function renderSlots() {
+  const grid = document.getElementById('slotsGrid');
+  const filtered = LOOT_DB.filter(matchesFilter);
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No slots match your current filters.</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  filtered.forEach(slotData => {
+    const card = buildSlotCard(slotData);
+    grid.appendChild(card);
+  });
+}
+
+function buildSlotCard(slotData) {
+  const { slot, icon, items } = slotData;
+  const equipped  = getEquipped(slot);
+  const expanded  = state.expanded === slot;
+  const hasBis    = bisSet(slot).size > 0;
+  const hasHave   = haveSet(slot).size > 0;
+
+  const card = document.createElement('div');
+  card.className = 'slot-card' + (expanded ? ' expanded' : '');
+  card.dataset.slot = slot;
+
+  // Filter items based on search/source
+  const visibleItems = items.filter(it => matchesItemFilter(it, slotData));
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'slot-header';
+
+  const iconEl = document.createElement('div');
+  iconEl.className = 'slot-icon';
+  iconEl.textContent = icon;
+
+  const info = document.createElement('div');
+  info.className = 'slot-info';
+
+  const slotNameEl = document.createElement('div');
+  slotNameEl.className = 'slot-name';
+  slotNameEl.textContent = slot;
+
+  const itemNameEl = document.createElement('div');
+  if (equipped) {
+    itemNameEl.className = 'slot-item-name epic';
+    itemNameEl.textContent = equipped;
+    itemNameEl.title = equipped;
+  } else {
+    itemNameEl.className = 'slot-item-name empty';
+    itemNameEl.textContent = `— empty`;
+  }
+
+  const ilvlEl = document.createElement('div');
+  ilvlEl.className = 'slot-ilvl';
+  ilvlEl.textContent = equipped ? `ilvl 259` : `${visibleItems.length} item${visibleItems.length!==1?'s':''}`;
+
+  info.appendChild(slotNameEl);
+  info.appendChild(itemNameEl);
+  info.appendChild(ilvlEl);
+  header.appendChild(iconEl);
+  header.appendChild(info);
+
+  // Badges
+  const badgesEl = document.createElement('div');
+  badgesEl.className = 'slot-badges';
+  if (hasHave) {
+    const b = document.createElement('span');
+    b.className = 'badge badge-have';
+    b.textContent = `✓ ${haveSet(slot).size} owned`;
+    badgesEl.appendChild(b);
+  }
+  if (hasBis) {
+    const b = document.createElement('span');
+    b.className = 'badge badge-bis';
+    b.textContent = '★ BiS';
+    badgesEl.appendChild(b);
+  }
+
+  // Item panel
+  const panel = document.createElement('div');
+  panel.className = 'item-panel';
+
+  const panelTitle = document.createElement('div');
+  panelTitle.className = 'item-panel-title';
+  panelTitle.textContent = `Available Items — ${slot}`;
+  panel.appendChild(panelTitle);
+
+  const list = document.createElement('ul');
+  list.className = 'item-list';
+
+  if (visibleItems.length === 0) {
+    const li = document.createElement('li');
+    li.style.color = 'var(--text-dim)';
+    li.style.fontSize = '0.85rem';
+    li.style.padding = '8px';
+    li.textContent = 'No items match current filters.';
+    list.appendChild(li);
+  } else {
+    visibleItems.forEach(item => {
+      list.appendChild(buildItemRow(item, slot, equipped));
+    });
+  }
+  panel.appendChild(list);
+
+  card.appendChild(header);
+  card.appendChild(badgesEl);
+  card.appendChild(panel);
+
+  // click on card header toggles expand
+  header.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.expanded === slot) {
+      state.expanded = null;
+    } else {
+      state.expanded = slot;
+    }
+    renderSlots();
+    // Scroll card into view if now expanded
+    if (state.expanded === slot) {
+      setTimeout(() => {
+        const el = document.querySelector(`.slot-card[data-slot="${slot}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  });
+
+  return card;
+}
+
+function buildItemRow(item, slot, currentEquipped) {
+  const li = document.createElement('li');
+  const row = document.createElement('div');
+  const selected = currentEquipped === item.name;
+
+  row.className = 'item-row' + (selected ? ' selected' : '');
+
+  // Name
+  const nameEl = document.createElement('span');
+  nameEl.className = 'item-row-name';
+  nameEl.textContent = item.name;
+
+  // ilvl
+  const ilvlEl = document.createElement('span');
+  ilvlEl.className = 'item-row-ilvl';
+  ilvlEl.textContent = item.ilvl;
+
+  // Source
+  const sourceEl = document.createElement('span');
+  sourceEl.className = 'item-row-source ' + (item.source === 'raid' ? 'source-raid' : 'source-mplus');
+  sourceEl.textContent = item.loc;
+
+  // Action buttons
+  const actions = document.createElement('div');
+  actions.className = 'item-row-actions';
+
+  // "Have" toggle
+  const haveBtn = document.createElement('button');
+  haveBtn.className = 'icon-btn' + (isHave(slot, item.name) ? ' have-active' : '');
+  haveBtn.title = isHave(slot, item.name) ? 'Remove from owned' : 'Mark as owned';
+  haveBtn.textContent = isHave(slot, item.name) ? '✔' : '○';
+
+  haveBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const hs = haveSet(slot);
+    if (hs.has(item.name)) {
+      hs.delete(item.name);
+      // if it was equipped, unequip
+      if (state.equipped[slot] === item.name) delete state.equipped[slot];
+      showToast(`Removed: ${item.name}`);
+    } else {
+      hs.add(item.name);
+      state.equipped[slot] = item.name; // auto-equip
+      showToast(`Collected: ${item.name}`);
+    }
+    saveState();
+    renderAll();
+  });
+
+  // "BiS" toggle
+  const bisBtn = document.createElement('button');
+  bisBtn.className = 'icon-btn' + (isBis(slot, item.name) ? ' bis-active' : '');
+  bisBtn.title = isBis(slot, item.name) ? 'Remove BiS mark' : 'Mark as BiS';
+  bisBtn.textContent = '★';
+
+  bisBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const bs = bisSet(slot);
+    if (bs.has(item.name)) {
+      bs.delete(item.name);
+      showToast(`BiS removed: ${item.name}`);
+    } else {
+      bs.add(item.name);
+      showToast(`BiS marked: ${item.name}`);
+    }
+    saveState();
+    renderAll();
+  });
+
+  actions.appendChild(haveBtn);
+  actions.appendChild(bisBtn);
+
+  row.appendChild(nameEl);
+  row.appendChild(ilvlEl);
+  row.appendChild(sourceEl);
+  row.appendChild(actions);
+
+  // Clicking row equips/unequips
+  row.addEventListener('click', (e) => {
+    if (e.target === haveBtn || e.target === bisBtn) return;
+    if (state.equipped[slot] === item.name) {
+      delete state.equipped[slot];
+      showToast(`Unequipped: ${item.name}`);
+    } else {
+      state.equipped[slot] = item.name;
+      showToast(`Selected: ${item.name}`);
+    }
+    saveState();
+    renderAll();
+  });
+
+  li.appendChild(row);
+  return li;
+}
+
+/* ======================================================
+   SLOT FILTER POPULATION
+====================================================== */
+function populateSlotFilter() {
+  const sel = document.getElementById('slotFilter');
+  LOOT_DB.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.slot;
+    opt.textContent = s.slot;
+    sel.appendChild(opt);
+  });
+}
+
+/* ======================================================
+   EVENT LISTENERS
+====================================================== */
+// Search (debounced)
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.filter.search = e.target.value.trim();
+    renderSlots();
+  }, 180);
+});
+
+// Source filter
+document.getElementById('sourceFilter').addEventListener('change', (e) => {
+  state.filter.source = e.target.value;
+  renderSlots();
+});
+
+// Slot filter
+document.getElementById('slotFilter').addEventListener('change', (e) => {
+  state.filter.slot = e.target.value;
+  renderSlots();
+});
+
+// Mode pills
+document.querySelectorAll('.pill[data-filter]').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.pill[data-filter]').forEach(p => {
+      p.classList.remove('active', 'active-raid', 'active-mplus', 'active-have', 'active-bis');
+    });
+    const f = pill.dataset.filter;
+    state.filter.mode = f;
+    if (f === 'all') pill.classList.add('active');
+    else if (f === 'have') pill.classList.add('active-have');
+    else if (f === 'bis') pill.classList.add('active-bis');
+    else pill.classList.add('active');
+    renderSlots();
+  });
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!confirm('Reset all saved loot data? This cannot be undone.')) return;
+  state.equipped = {};
+  state.have = {};
+  state.bis = {};
+  state.expanded = null;
+  saveState();
+  renderAll();
+  showToast('All data reset.');
+});
+
+// Keyboard shortcut: Escape closes expanded slot
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.expanded) {
+    state.expanded = null;
+    renderSlots();
+  }
+});
+
+/* ======================================================
+   INIT
+====================================================== */
+loadState();
+populateSlotFilter();
+renderAll();
+</script>
+</body>
+</html>
